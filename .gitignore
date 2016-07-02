@@ -11,6 +11,8 @@
 ## Ignore Eclipse files ##
 .project
 .settings
+.classpath
 
 ## Ignore application workspace ##
 /run
+/bin
