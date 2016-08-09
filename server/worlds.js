@@ -238,19 +238,20 @@ var ChunkDiskIO = {
 		}
 
 		var fpath = "data/world/" + aworld.uid + "/";
-		
-		
 		var lockfile = fpath + "WRITE.lock";
-		if (fs.exists(lockfile))
-			throw new Error("World directory is write-locked (WRITE.lock)");
-		fs.closeSync(fs.openSync(lockfile, "w"));
-
+		
+		if (fs.exists(fpath)) {
+			if (fs.exists(lockfile))
+				throw new Error("World directory is write-locked (WRITE.lock)");
+		}
 		if (fs.exists(fpath))
 			fs.unlink(fpath, function() {
 				mkdirp(fpath, stream);
 			});
 		else
 			mkdirp(fpath, stream);
+		
+		fs.closeSync(fs.openSync(lockfile, "w"));
 	},
 
 	streamDescriptorToDisk : function(path, world, callback) {
