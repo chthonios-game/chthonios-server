@@ -18,7 +18,16 @@ function Packet(payloads) {
 	this.deserialize = function(str) {
 		var blob = JSON.parse(str);
 		this.timestamp = blob.timestamp;
-		this.payloads = blob.msgs;
+		this.payloads = [];
+		for (var i = 0; i < blob.msgs.length; i++) {
+			var payload = blob.msgs[i];
+			if (payload.channel === undefined || payload.channel === null)
+				throw new Error(
+						"Packet.deserialize: detected ERR_ABSENT_CHANNEL!");
+			if (payload.type === undefined || payload.type === null)
+				throw new Error("Packet.deserialize: detected ERR_ABSENT_TYPE!");
+			this.payloads.push(payload);
+		}
 	}
 }
 
@@ -30,16 +39,19 @@ function ClientSocket(server, socket) {
 		open : [],
 		close : [],
 		error : [],
-		message : [],
-		packet : []
+		message : []
 	};
+
+	/** The list of channel handlers */
+	this.handlers = [];
 
 	this._socket = socket;
 	this._server = server;
 	this._handshake = false;
 
 	this.toString = function() {
-		return "ServerSocket { " + this._socket._socket.remoteAddress + ":" + this._socket._socket.remotePort + " }";
+		return "ServerSocket { " + this._socket._socket.remoteAddress + ":"
+				+ this._socket._socket.remotePort + " }";
 	}
 
 	/**
@@ -51,8 +63,22 @@ function ClientSocket(server, socket) {
 	 *            The function
 	 */
 	this.bind = function(event, fn) {
-		Common.assert(this.callbacks[event], "No such event type");
+		Common.assert(this.callbacks[event], "No such event type " + event);
 		this.callbacks[event].push(fn);
+	}
+
+	/**
+	 * Bind a callback function to a message channel.
+	 * 
+	 * @param name
+	 *            The channel name
+	 * @param fn
+	 *            The function
+	 */
+	this.channel = function(name, fn) {
+		if (this.handlers[name] === undefined || this.handlers[name] === null)
+			this.handlers[name] = [];
+		this.handlers[name].push(fn);
 	}
 
 	/**
@@ -62,10 +88,14 @@ function ClientSocket(server, socket) {
 		console.log(this.toString(), "opening connection");
 		this._handshake = false;
 		this._handleEvtOpening();
-		this._socket.onopen = Common.decoratedCallback(this._handleEvtOpen, this);
-		this._socket.onclose = Common.decoratedCallback(this._handleEvtClose, this);
-		this._socket.onerror = Common.decoratedCallback(this._handleEvtError, this);
-		this._socket.onmessage = Common.decoratedCallback(this._handleEvtMessage, this);
+		this._socket.onopen = Common.decoratedCallback(this._handleEvtOpen,
+				this);
+		this._socket.onclose = Common.decoratedCallback(this._handleEvtClose,
+				this);
+		this._socket.onerror = Common.decoratedCallback(this._handleEvtError,
+				this);
+		this._socket.onmessage = Common.decoratedCallback(
+				this._handleEvtMessage, this);
 	}
 
 	/**
@@ -134,6 +164,29 @@ function ClientSocket(server, socket) {
 		}
 	}
 
+	this._fireChannelCall = function(channel, args) {
+		var callbacks = this.handlers[channel];
+		if (callbacks == undefined || callbacks == null) {
+			console.log(this.toString(),
+					"got message for unsupported network channel, panic!",
+					channel);
+			this.close(Common.Network.CODE_PROTO_ERROR, {
+				reason : "Unsupported network channel."
+			});
+			return;
+		}
+		for (var i = 0; i < callbacks.length; i++) {
+			var callback = callbacks[i];
+			try {
+				callback.apply(this, args);
+			} catch (e) {
+				// TODO: Log exception somewhere, continue gracefully!
+				console.error(e);
+				throw e;
+			}
+		}
+	}
+
 	this._handleEvtOpening = function() {
 		console.log(this.toString(), "client socket opening");
 		this._handshake = false;
@@ -161,27 +214,37 @@ function ClientSocket(server, socket) {
 		if (typeofz == "message") {
 			var chunk = message.data;
 			this._fireCallbacks("message", [ chunk ]);
-			var packet = new Packet(null);
-			packet.deserialize(chunk);
-			if (packet.payloads.length == 1) {
-				var payload = packet.payloads[0];
-				if (payload.type == "handshake") {
-					this._handleHelloHandshake(payload);
-					return;
+			try {
+				var packet = new Packet(null);
+				packet.deserialize(chunk);
+				for (var i = 0; i < packet.payloads.length; i++) {
+					var payload = packet.payloads[i];
+					if (payload.channel == "authenticate"
+							&& payload.type == "handshake") {
+						this._handleHelloHandshake(payload);
+						continue;
+					}
+					if (!this._handshake) {
+						this.close(Common.Network.CODE_HANDSHAKE_ERR, {
+							reason : "Missing network handshake"
+						});
+						return;
+					}
+					this._fireChannelCall(payload.channel, [ payload ]);
 				}
-			}
-			if (!this._handshake) {
-				this.close(Common.Network.CODE_HANDSHAKE_ERR, {
-					reason : "Missing network handshake"
+			} catch (e) {
+				console.error(this.toString(), "network read error", e);
+				this.close(Common.Network.CODE_PROTO_ERROR, {
+					reason : "Server detected network error."
 				});
-			} else
-				this._fireCallbacks("packet", [ packet ]);
+			}
 		} else
 			console.error(this.toString(), "unexpected payload type", typeofz);
 	}
 
 	this._handleHelloHandshake = function(payload) {
-		if (payload.accessToken == undefined || payload.accessToken == null || payload.clientToken == undefined
+		if (payload.accessToken == undefined || payload.accessToken == null
+				|| payload.clientToken == undefined
 				|| payload.clientToken == null) {
 			var response = new Packet([ {
 				type : "handshake",
@@ -207,22 +270,26 @@ function ClientSocket(server, socket) {
 				}
 			};
 
-			var request = http.request(headers, Common.decoratedCallback(function(res) {
-				res.on("data", Common.decoratedCallback(function(chunk) {
-					var result = JSON.parse(chunk);
-					console.log(this.toString(), "authentication result", result.status);
-					var response = new Packet([ {
-						type : "handshake",
-						result : result.status,
-						message : result.message
-					} ]);
-					this.send(response, true);
-					if (result.status == "200") {
-						this._handshake = true;
-						this._fireCallbacks("open", []);
-					}
-				}, this));
-			}, this));
+			var request = http.request(headers, Common.decoratedCallback(
+					function(res) {
+						res.on("data", Common.decoratedCallback(
+								function(chunk) {
+									var result = JSON.parse(chunk);
+									console.log(this.toString(),
+											"authentication result",
+											result.status);
+									var response = new Packet([ {
+										type : "handshake",
+										result : result.status,
+										message : result.message
+									} ]);
+									this.send(response, true);
+									if (result.status == "200") {
+										this._handshake = true;
+										this._fireCallbacks("open", []);
+									}
+								}, this));
+					}, this));
 			request.write(data);
 			request.end();
 		}

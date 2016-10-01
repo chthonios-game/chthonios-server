@@ -19,7 +19,7 @@ function NetworkPlayer(server, socket) {
 	this.init = function(world) {
 		console.log(this.toString(), "opening player connection");
 		this._socket.init();
-		this._socket.bind("packet", Common.decoratedCallback(function(packet) {
+		this._socket.channel("general", Common.decoratedCallback(function(packet) {
 			if (packet.payloads != undefined && packet.payloads != null) {
 				var payloads = packet.payloads;
 				if (payloads.length != 0)

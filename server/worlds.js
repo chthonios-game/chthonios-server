@@ -34,10 +34,12 @@ var World = Common.Class.extend({
 
 	generate : function(generator) {
 		console.log(this.toString(), "requesting tileset");
-		this.tileset = generator.paintTileset(this.width, this.height, this.chunkWidth, this.chunkHeight);
+		this.tileset = generator.paintTileset(this.width, this.height,
+				this.chunkWidth, this.chunkHeight);
 		console.log(this.toString(), "done requesting tileset");
 		console.log(this.toString(), "requesting chunks");
-		this.chunks = generator.paintChunks(this.width, this.height, this.chunkWidth, this.chunkHeight);
+		this.chunks = generator.paintChunks(this.width, this.height,
+				this.chunkWidth, this.chunkHeight);
 		console.log(this.toString(), "done requesting chunks");
 		console.log(this.toString(), "rebuilding pathing for world");
 		for (var x = 0; x < this.chunks.length; x++)
@@ -57,16 +59,20 @@ var World = Common.Class.extend({
 	},
 
 	connectPlayerToWorld : function(player) {
-		Common.assert(player instanceof PlayerModel.NetworkPlayer, "not a player");
-		console.log(this.toString(), "adding player to world", player.toString());
+		Common.assert(player instanceof PlayerModel.NetworkPlayer,
+				"not a player");
+		console.log(this.toString(), "adding player to world", player
+				.toString());
 		this.players.push(player);
 		this.sendWorldToPlayer(player);
 		this.sendEntitiesToPlayer(player);
 	},
 
 	removePlayerFromWorld : function(player) {
-		Common.assert(player instanceof PlayerModel.NetworkPlayer, "not a player");
-		console.log(this.toString(), "removing player from world", player.toString());
+		Common.assert(player instanceof PlayerModel.NetworkPlayer,
+				"not a player");
+		console.log(this.toString(), "removing player from world", player
+				.toString());
 		var idx = -1;
 		while ((idx = this.players.indexOf(player)) != -1)
 			this.players.splice(idx, 1);
@@ -118,7 +124,17 @@ var World = Common.Class.extend({
 		console.log(player.toString(), "sending entity data...");
 		for (var i = 0; i < this.entities.length; i++) {
 			var entity = this.entities[i];
-
+			if (entity !== null) {
+				try {
+					player.sendDataToPlayer([ {
+						type : "entityCreated",
+						data : entity.getPacket()
+					} ]);
+				} catch (e) {
+					console.warn(player.toString(),
+							"problem sending entity data", e);
+				}
+			}
 		}
 		console.log(player.toString(), "done sending entity data");
 	},
@@ -146,7 +162,9 @@ var World = Common.Class.extend({
 			var player = this.players[i];
 			player.update(this);
 			if (player.invalid()) {
-				console.log(player.toString(), "player invalidated, collecting");
+				console
+						.log(player.toString(),
+								"player invalidated, collecting");
 				this.removePlayerFromWorld(player);
 			}
 		}
@@ -154,7 +172,9 @@ var World = Common.Class.extend({
 			var entity = this.entities[i];
 			entity.update(this);
 			if (entity.invalid()) {
-				console.log(entity.toString(), "entity invalidated, collecting");
+				console
+						.log(entity.toString(),
+								"entity invalidated, collecting");
 				this.removeEntityFromWorld(entity);
 			}
 		}
@@ -173,13 +193,12 @@ var Chunk = Common.Class.extend({
 	},
 
 	toString : function() {
-		return "Chunk { width: " + this.width + ", height: " + this.height + " }";
+		return "Chunk { width: " + this.width + ", height: " + this.height
+				+ " }";
 	},
 
 	rebuildNodes : function() {
-		console.log(this.toString(), "rebuilding node map");
 		this.nodemap = Nodegraph.Painter.paintMap(this);
-		console.log(this.toString(), "rebuilt node map", this.nodemap.toString());
 	},
 
 	adjacent : function(x, y) {
@@ -226,7 +245,8 @@ var ChunkDiskIO = {
 			};
 
 			guards++;
-			ChunkDiskIO.streamDescriptorToDisk(fpath + "descriptor", aworld, guard);
+			ChunkDiskIO.streamDescriptorToDisk(fpath + "descriptor", aworld,
+					guard);
 
 			var chunkmap = aworld.chunks;
 			fs.mkdir(fpath + "chunk/", function() {
@@ -234,7 +254,8 @@ var ChunkDiskIO = {
 					for (var y = 0; y < chunkmap[x].length; y++) {
 						guards++;
 						var cpath = fpath + "chunk/" + x + "-" + y + ".chunk";
-						ChunkDiskIO.streamChunkToDisk(cpath, chunkmap[x][y], guard);
+						ChunkDiskIO.streamChunkToDisk(cpath, chunkmap[x][y],
+								guard);
 					}
 				}
 			});
@@ -242,7 +263,7 @@ var ChunkDiskIO = {
 
 		var fpath = "data/world/" + aworld.uid + "/";
 		var lockfile = fpath + "WRITE.lock";
-		
+
 		if (fs.exists(fpath)) {
 			if (fs.exists(lockfile))
 				throw new Error("World directory is write-locked (WRITE.lock)");
@@ -253,7 +274,7 @@ var ChunkDiskIO = {
 			});
 		else
 			mkdirp(fpath, stream);
-		
+
 		fs.closeSync(fs.openSync(lockfile, "w"));
 	},
 
@@ -287,48 +308,49 @@ var ChunkDiskIO = {
 	}
 }
 
-var WorldGenerator = Common.Class.extend({
-	seed : null,
+var WorldGenerator = Common.Class
+		.extend({
+			seed : null,
 
-	init : function(seed) {
-		this.seed = seed;
-	},
+			init : function(seed) {
+				this.seed = seed;
+			},
 
-	paintTileset : function(width, height, chunkWidth, chunkHeight) {
-		console.log(this.toString(), "populating tileset");
-		var tileset = this.paintWorldTileset(width, height, chunkWidth, chunkHeight);
-		console.log(this.toString(), "done populating tileset");
-		return tileset;
-	},
+			paintTileset : function(width, height, chunkWidth, chunkHeight) {
+				console.log(this.toString(), "populating tileset");
+				var tileset = this.paintWorldTileset(width, height, chunkWidth,
+						chunkHeight);
+				console.log(this.toString(), "done populating tileset");
+				return tileset;
+			},
 
-	paintChunks : function(width, height, chunkWidth, chunkHeight) {
-		console.log(this.toString(), "populating chunks");
-		var chunks = Common.brewArray(width, height);
-		for (var x = 0; x < width; x++)
-			for (var y = 0; y < height; y++) {
-				console.log(this.toString(), "painting chunk", [ x, y ]);
-				chunks[x][y] = this.paintChunk(x, y, chunkWidth, chunkHeight);
-				console.log(this.toString(), "decorating chunk", [ x, y ]);
-				this.decorateChunk(chunks[x][y], x, y, chunkWidth, chunkHeight);
-				console.log(this.toString(), "done preparing chunk", [ x, y ], chunks[x][y].toString());
-			}
-		console.log(this.toString(), "done populating chunks");
-		return chunks;
-	},
-	paintChunk : function(x, y, chunkWidth, chunkHeight) {
-	},
-	decorateChunk : function(chunk, x, y, chunkWidth, chunkHeight) {
-	},
-	paintWorldTileset : function(x, y, chunkWidth, chunkHeight) {
-	},
-});
+			paintChunks : function(width, height, chunkWidth, chunkHeight) {
+				console.log(this.toString(), "populating chunks");
+				var chunks = Common.brewArray(width, height);
+				for (var x = 0; x < width; x++)
+					for (var y = 0; y < height; y++) {
+						chunks[x][y] = this.paintChunk(x, y, chunkWidth,
+								chunkHeight);
+						this.decorateChunk(chunks[x][y], x, y, chunkWidth,
+								chunkHeight);
+					}
+				console.log(this.toString(), "done populating chunks");
+				return chunks;
+			},
+			paintChunk : function(x, y, chunkWidth, chunkHeight) {
+			},
+			decorateChunk : function(chunk, x, y, chunkWidth, chunkHeight) {
+			},
+			paintWorldTileset : function(x, y, chunkWidth, chunkHeight) {
+			},
+		});
 
 module.exports = {
 	PlayerModel : PlayerModel,
 	EntityModel : EntityModel,
-	
+
 	World : World,
 	Chunk : Chunk,
-	
+
 	WorldGenerator : WorldGenerator
 }
