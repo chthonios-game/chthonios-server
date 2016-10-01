@@ -5,7 +5,8 @@ var Sockets = require("./serversocket.js");
 var World = require("./worlds.js");
 var FlatGenerator = require("./generators/flat.js");
 var MapServer = require("./mapserver.js");
-var GameObjects = World.GameObjects;
+var PlayerModel = World.PlayerModel;
+
 
 var Server = {
 
@@ -30,7 +31,7 @@ var Server = {
 		this.serverSocket.on("connection", Common.decoratedCallback(function(csocket) {
 			console.log(csocket._socket.remoteAddress, csocket._socket.remotePort, "handling connection");
 			var client = new Sockets.ClientSocket(this, csocket);
-			var player = new GameObjects.Player(this, client);
+			var player = new PlayerModel.NetworkPlayer(this, client);
 
 			player.init(this.world);
 			client.bind("open", Common.decoratedCallback(function() {

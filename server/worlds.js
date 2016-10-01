@@ -1,7 +1,10 @@
 var Common = require("./common.js");
 var fs = require('fs');
 var mkdirp = require('mkdirp');
-var GameObjects = require("./gameobjects.js");
+
+var EntityModel = require("./entities/entity.js");
+var PlayerModel = require("./player.js");
+
 var Nodegraph = require("./math/nodegraph.js");
 
 var World = Common.Class.extend({
@@ -54,7 +57,7 @@ var World = Common.Class.extend({
 	},
 
 	connectPlayerToWorld : function(player) {
-		Common.assert(player instanceof GameObjects.Player, "not a player");
+		Common.assert(player instanceof PlayerModel.NetworkPlayer, "not a player");
 		console.log(this.toString(), "adding player to world", player.toString());
 		this.players.push(player);
 		this.sendWorldToPlayer(player);
@@ -62,7 +65,7 @@ var World = Common.Class.extend({
 	},
 
 	removePlayerFromWorld : function(player) {
-		Common.assert(player instanceof GameObjects.Player, "not a player");
+		Common.assert(player instanceof PlayerModel.NetworkPlayer, "not a player");
 		console.log(this.toString(), "removing player from world", player.toString());
 		var idx = -1;
 		while ((idx = this.players.indexOf(player)) != -1)
@@ -70,7 +73,7 @@ var World = Common.Class.extend({
 	},
 
 	spawnEntityInWorld : function(entity) {
-		Common.assert(entity instanceof GameObjects.Entity, "not an entity");
+		Common.assert(entity instanceof EntityModel.Entity, "not an entity");
 		var next = 0;
 		while (true) {
 			var dup = false;
@@ -93,7 +96,7 @@ var World = Common.Class.extend({
 	},
 
 	removeEntityFromWorld : function(entity) {
-		Common.assert(entity instanceof GameObjects.Entity, "not an entity");
+		Common.assert(entity instanceof EntityModel.Entity, "not an entity");
 		var idx = -1;
 		while ((idx = this.entities.indexOf(player)) != -1)
 			this.entities.splice(idx, 1);
@@ -321,8 +324,11 @@ var WorldGenerator = Common.Class.extend({
 });
 
 module.exports = {
-	GameObjects : GameObjects,
+	PlayerModel : PlayerModel,
+	EntityModel : EntityModel,
+	
 	World : World,
 	Chunk : Chunk,
+	
 	WorldGenerator : WorldGenerator
 }
