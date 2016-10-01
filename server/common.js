@@ -79,7 +79,9 @@ var Class = (function() {
 		initializing = false;
 
 		for ( var name in prop) {
-			if (typeof prop[name] != "function" || typeof _super[name] != "function" || !fnTest.test(prop[name]))
+			if (typeof prop[name] != "function"
+					|| typeof _super[name] != "function"
+					|| !fnTest.test(prop[name]))
 				prototype[name] = prop[name];
 			else
 				prototype[name] = (function(name, fn) {
@@ -94,8 +96,13 @@ var Class = (function() {
 		}
 
 		function Class() {
-			if (!initializing && this.init)
-				this.init.apply(this, arguments);
+			if (!initializing && this.init) {
+				try {
+					this.init.apply(this, arguments);
+				} catch (e) {
+					throw new Error("Unhandled error in class constructor.", e);
+				}
+			}
 		}
 
 		Class.prototype = prototype;
