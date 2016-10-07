@@ -247,6 +247,7 @@ function ClientSocket(server, socket) {
 				|| payload.clientToken == undefined
 				|| payload.clientToken == null) {
 			var response = new Packet([ {
+				channel : "authenticate",
 				type : "handshake",
 				result : false,
 				message : "Missing tokens"
@@ -279,6 +280,7 @@ function ClientSocket(server, socket) {
 											"authentication result",
 											result.status);
 									var response = new Packet([ {
+										channel : "authenticate",
 										type : "handshake",
 										result : result.status,
 										message : result.message
