@@ -8,7 +8,7 @@ var PlayerModel = require("./player.js");
 var Nodegraph = require("./math/nodegraph.js");
 
 var World = Common.Class.extend({
-
+	
 	uid : null,
 	players : [],
 	entities : [],
@@ -30,6 +30,8 @@ var World = Common.Class.extend({
 		this.height = height;
 		this.chunkWidth = chunkWidth;
 		this.chunkHeight = chunkHeight;
+		
+		// throw new (Common.Exception.extend({}, "WorldException"))("Test error!");
 	},
 
 	generate : function(generator) {
@@ -179,7 +181,7 @@ var World = Common.Class.extend({
 			}
 		}
 	}
-});
+}, "World");
 
 var Chunk = Common.Class.extend({
 	tiles : null,
