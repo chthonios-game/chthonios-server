@@ -43,6 +43,64 @@ var vec2 = {
 	}
 }
 
+var Vector3 = function(x, y, z) {
+
+	this.identity = function() {
+		return new Vector3(0, 0, 0);
+	};
+
+	this.x = x;
+	this.y = y;
+	this.z = z;
+
+	this.clone = function() {
+		return new Vector3(this.x, this.y, this.z);
+	};
+
+	this.len = function() {
+		return Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2) + Math.pow(this.z, 2));
+	};
+
+	this.unitV = function() {
+		var il = this.len();
+		if (len == 1)
+			return this.copy();
+		return new Vector3(this.x / il, this.y / il, this.z / il);
+	}
+
+	this.dotP = function(o) {
+		return (this.x * o.x) + (this.y * o.y) + (this.z * o.z);
+	};
+
+	this.cross = function(o) {
+		return new Vector3((this.y * o.z) - (this.z * o.y), (this.z * o.x - this.x * o.z), (this.x * o.y - this.y * o.x));
+	};
+
+	this.add = function(o) {
+		this.x += o.x;
+		this.y += o.y;
+		this.z += o.z;
+	};
+
+	this.sub = function(o) {
+		this.x -= o.x;
+		this.y -= o.y;
+		this.z -= o.z;
+	};
+
+	this.neg = function() {
+		return new Vector3(-this.x, -this.y, -this.z);
+	};
+
+	this.mul = function(s) {
+		this.x *= s;
+		this.y *= s;
+		this.z *= s;
+	}
+}
+
+
 module.exports = {
-	vec2 : vec2
+	vec2 : vec2,
+	Vector3 : Vector3
 }
