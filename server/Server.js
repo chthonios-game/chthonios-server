@@ -15,5 +15,5 @@ try {
 	}
 } catch (e) {
 	console.error("Unhandled server exception detected:");
-	console.error(e);
+	console.error(e.toString(), e.stack);
 }
